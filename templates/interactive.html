@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Interactive Headless Browser</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-top: 0;
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .control-group {
+            margin-bottom: 15px;
+        }
+        button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        button.danger {
+            background-color: #f44336;
+        }
+        button.danger:hover {
+            background-color: #d32f2f;
+        }
+        button.secondary {
+            background-color: #2196F3;
+        }
+        button.secondary:hover {
+            background-color: #0b7dda;
+        }
+        input[type="text"], input[type="number"] {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        input[type="text"] {
+            width: 300px;
+        }
+        input[type="number"] {
+            width: 60px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .stream-container {
+            position: relative;
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+            background-color: #eee;
+            min-height: 400px;
+            cursor: pointer;
+        }
+        .stream-overlay {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(0,0,0,0.5);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .click-indicator {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: rgba(255, 0, 0, 0.5);
+            border: 2px solid red;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        .stream-img {
+            display: block;
+            width: 100%;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+        .error {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+        .hidden {
+            display: none;
+        }
+        .flex {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .settings-panel {
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .interaction-panel {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .click-mode-toggle {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+        }
+        .click-mode-toggle label {
+            margin: 0 10px 0 0;
+            font-weight: normal;
+        }
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .toggle-slider {
+            background-color: #2196F3;
+        }
+        input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
+        .mode-label {
+            margin-left: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Interactive Headless Browser</h1>
+        
+        <div class="settings-panel">
+            <div class="control-group">
+                <button id="startBrowserBtn">Start Browser</button>
+                <button id="startStreamBtn" disabled>Start Streaming</button>
+                <button id="stopStreamBtn" class="danger" disabled>Stop Streaming</button>
+            </div>
+            
+            <div class="control-group">
+                <div class="flex">
+                    <div>
+                        <label for="urlInput">URL:</label>
+                        <input type="text" id="urlInput" placeholder="https://example.com" value="https://example.com">
+                    </div>
+                    <button id="navigateBtn" disabled>Navigate</button>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <div class="flex">
+                    <div>
+                        <label for="fpsInput">FPS:</label>
+                        <input type="number" id="fpsInput" min="1" max="60" value="30">
+                    </div>
+                    <div>
+                        <label for="qualityInput">Quality:</label>
+                        <input type="number" id="qualityInput" min="10" max="100" value="80">
+                    </div>
+                    <button id="updateSettingsBtn" class="secondary" disabled>Update Settings</button>
+                </div>
+            </div>
+            
+            <div class="click-mode-toggle">
+                <label for="clickModeToggle">Click Mode:</label>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="clickModeToggle" checked>
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="mode-label" id="clickModeLabel">Direct Click</span>
+            </div>
+        </div>
+        
+        <div class="stream-container" id="streamContainer">
+            <div id="streamOverlay" class="stream-overlay hidden">
+                FPS: <span id="currentFps">30</span> | Quality: <span id="currentQuality">80</span>
+            </div>
+            <div id="clickIndicator" class="click-indicator"></div>
+            <img id="streamImg" class="stream-img hidden">
+            <div id="placeholderText" style="padding: 20px; text-align: center; color: #666;">
+                Start the browser and streaming to see live content here
+            </div>
+        </div>
+        
+        <div class="interaction-panel">
+            <div>
+                <label for="selectorInput">CSS Selector:</label>
+                <input type="text" id="selectorInput" placeholder="button, input, .class, #id">
+            </div>
+            <button id="clickBtn" disabled>Click Element</button>
+            
+            <div>
+                <label for="textInput">Text:</label>
+                <input type="text" id="textInput" placeholder="Text to type">
+            </div>
+            <button id="typeBtn" disabled>Type Text</button>
+            
+            <div>
+                <label for="jsInput">JavaScript:</label>
+                <input type="text" id="jsInput" placeholder="document.title" value="document.title">
+            </div>
+            <button id="executeBtn" disabled>Execute</button>
+        </div>
+        
+        <div id="statusMessage" class="status hidden"></div>
+        <div id="clickCoordinates" style="margin-top: 10px; font-size: 12px; color: #666;"></div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const startBrowserBtn = document.getElementById('startBrowserBtn');
+        const startStreamBtn = document.getElementById('startStreamBtn');
+        const stopStreamBtn = document.getElementById('stopStreamBtn');
+        const navigateBtn = document.getElementById('navigateBtn');
+        const updateSettingsBtn = document.getElementById('updateSettingsBtn');
+        const urlInput = document.getElementById('urlInput');
+        const fpsInput = document.getElementById('fpsInput');
+        const qualityInput = document.getElementById('qualityInput');
+        const streamContainer = document.getElementById('streamContainer');
+        const streamImg = document.getElementById('streamImg');
+        const placeholderText = document.getElementById('placeholderText');
+        const streamOverlay = document.getElementById('streamOverlay');
+        const currentFps = document.getElementById('currentFps');
+        const currentQuality = document.getElementById('currentQuality');
+        const statusMessage = document.getElementById('statusMessage');
+        const selectorInput = document.getElementById('selectorInput');
+        const textInput = document.getElementById('textInput');
+        const jsInput = document.getElementById('jsInput');
+        const clickBtn = document.getElementById('clickBtn');
+        const typeBtn = document.getElementById('typeBtn');
+        const executeBtn = document.getElementById('executeBtn');
+        const clickModeToggle = document.getElementById('clickModeToggle');
+        const clickModeLabel = document.getElementById('clickModeLabel');
+        const clickIndicator = document.getElementById('clickIndicator');
+        const clickCoordinates = document.getElementById('clickCoordinates');
+        
+        // State
+        let browserStarted = false;
+        let streamingActive = false;
+        let directClickMode = true;
+        
+        // Helper function for API calls
+        async function callApi(endpoint, data = {}) {
+            try {
+                const response = await fetch(`/api/${endpoint}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                return await response.json();
+            } catch (error) {
+                console.error('API Error:', error);
+                showStatus(`Error: ${error.message}`, true);
+                return { success: false, error: error.message };
+            }
+        }
+        
+        // Show status message
+        function showStatus(message, isError = false) {
+            statusMessage.textContent = message;
+            statusMessage.className = isError ? 'status error' : 'status';
+            statusMessage.classList.remove('hidden');
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                statusMessage.classList.add('hidden');
+            }, 5000);
+        }
+        
+        // Update button states
+        function updateButtonStates() {
+            startBrowserBtn.disabled = browserStarted;
+            startStreamBtn.disabled = !browserStarted || streamingActive;
+            stopStreamBtn.disabled = !streamingActive;
+            navigateBtn.disabled = !browserStarted;
+            updateSettingsBtn.disabled = !browserStarted;
+            clickBtn.disabled = !browserStarted;
+            typeBtn.disabled = !browserStarted;
+            executeBtn.disabled = !browserStarted;
+        }
+        
+        // Show click indicator
+        function showClickIndicator(x, y) {
+            clickIndicator.style.left = `${x}px`;
+            clickIndicator.style.top = `${y}px`;
+            clickIndicator.style.opacity = '1';
+            
+            setTimeout(() => {
+                clickIndicator.style.opacity = '0';
+            }, 500);
+        }
+        
+        // Handle click on stream
+        streamContainer.addEventListener('click', async (e) => {
+            if (!streamingActive || !directClickMode) return;
+            
+            // Get click coordinates relative to the stream container
+            const rect = streamContainer.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // Show click indicator
+            showClickIndicator(x, y);
+            
+            // Send click to the browser
+            const containerWidth = streamContainer.clientWidth;
+            const containerHeight = streamContainer.clientHeight;
+            
+            const result = await callApi('click/stream', {
+                x: x,
+                y: y,
+                containerWidth: containerWidth,
+                containerHeight: containerHeight
+            });
+            
+            if (result.success) {
+                clickCoordinates.textContent = `Clicked at: (${Math.round(result.x)}, ${Math.round(result.y)})`;
+                showStatus(`Clicked at position (${Math.round(result.x)}, ${Math.round(result.y)})`);
+            } else {
+                showStatus(`Click failed: ${result.error}`, true);
+            }
+        });
+        
+        // Toggle click mode
+        clickModeToggle.addEventListener('change', () => {
+            directClickMode = clickModeToggle.checked;
+            clickModeLabel.textContent = directClickMode ? 'Direct Click' : 'Selector Click';
+            
+            if (directClickMode) {
+                streamContainer.style.cursor = 'pointer';
+            } else {
+                streamContainer.style.cursor = 'default';
+            }
+        });
+        
+        // Start browser
+        startBrowserBtn.addEventListener('click', async () => {
+            const result = await callApi('start');
+            if (result.success) {
+                browserStarted = true;
+                showStatus('Browser started successfully');
+                updateButtonStates();
+            } else {
+                showStatus(`Failed to start browser: ${result.error}`, true);
+            }
+        });
+        
+        // Navigate to URL
+        navigateBtn.addEventListener('click', async () => {
+            const url = urlInput.value;
+            if (!url) {
+                showStatus('Please enter a URL', true);
+                return;
+            }
+            
+            const result = await callApi('navigate', { url });
+            if (result.success) {
+                showStatus(`Navigated to ${result.url}`);
+            } else {
+                showStatus(`Navigation failed: ${result.error}`, true);
+            }
+        });
+        
+        // Start streaming
+        startStreamBtn.addEventListener('click', async () => {
+            const fps = parseInt(fpsInput.value) || 30;
+            const quality = parseInt(qualityInput.value) || 80;
+            
+            const result = await callApi('stream/start', { fps, quality });
+            if (result.success) {
+                streamingActive = true;
+                currentFps.textContent = result.fps;
+                currentQuality.textContent = result.quality;
+                streamOverlay.classList.remove('hidden');
+                placeholderText.classList.add('hidden');
+                
+                // Start the MJPEG stream
+                streamImg.src = '/api/stream/mjpeg';
+                streamImg.classList.remove('hidden');
+                
+                showStatus(`Streaming started at ${result.fps} FPS`);
+                updateButtonStates();
+            } else {
+                showStatus(`Failed to start streaming: ${result.error}`, true);
+            }
+        });
+        
+        // Stop streaming
+        stopStreamBtn.addEventListener('click', async () => {
+            const result = await callApi('stream/stop');
+            if (result.success) {
+                streamingActive = false;
+                streamImg.classList.add('hidden');
+                streamOverlay.classList.add('hidden');
+                placeholderText.classList.remove('hidden');
+                
+                // Stop the stream by setting src to empty
+                streamImg.src = '';
+                
+                showStatus('Streaming stopped');
+                updateButtonStates();
+            } else {
+                showStatus(`Failed to stop streaming: ${result.error}`, true);
+            }
+        });
+        
+        // Update stream settings
+        updateSettingsBtn.addEventListener('click', async () => {
+            const fps = parseInt(fpsInput.value) || 30;
+            const quality = parseInt(qualityInput.value) || 80;
+            
+            const result = await callApi('stream/settings', { fps, quality });
+            if (result.success) {
+                currentFps.textContent = result.fps;
+                currentQuality.textContent = result.quality;
+                showStatus(`Stream settings updated: ${result.fps} FPS, quality ${result.quality}`);
+            } else {
+                showStatus(`Failed to update settings: ${result.error}`, true);
+            }
+        });
+        
+        // Click element
+        clickBtn.addEventListener('click', async () => {
+            const selector = selectorInput.value;
+            if (!selector) {
+                showStatus('Please enter a CSS selector', true);
+                return;
+            }
+            
+            const result = await callApi('click', { selector });
+            if (result.success) {
+                showStatus(`Clicked on element: ${selector}`);
+            } else {
+                showStatus(`Failed to click element: ${result.error}`, true);
+            }
+        });
+        
+        // Type text
+        typeBtn.addEventListener('click', async () => {
+            const selector = selectorInput.value;
+            const text = textInput.value;
+            
+            if (!selector) {
+                showStatus('Please enter a CSS selector', true);
+                return;
+            }
+            
+            if (!text) {
+                showStatus('Please enter text to type', true);
+                return;
+            }
+            
+            const result = await callApi('type', { selector, text });
+            if (result.success) {
+                showStatus(`Typed text into element: ${selector}`);
+            } else {
+                showStatus(`Failed to type text: ${result.error}`, true);
+            }
+        });
+        
+        // Execute JavaScript
+        executeBtn.addEventListener('click', async () => {
+            const script = jsInput.value;
+            if (!script) {
+                showStatus('Please enter JavaScript code', true);
+                return;
+            }
+            
+            const result = await callApi('execute', { script });
+            if (result.success) {
+                showStatus(`JavaScript executed. Result: ${JSON.stringify(result.result)}`);
+            } else {
+                showStatus(`Failed to execute JavaScript: ${result.error}`, true);
+            }
+        });
+        
+        // Initialize
+        updateButtonStates();
+        streamContainer.style.cursor = 'pointer';
+    </script>
+</body>
+</html>

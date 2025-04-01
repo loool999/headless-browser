@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Headless Browser</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        button { padding: 8px 16px; margin: 5px; }
+        input { padding: 8px; width: 300px; }
+        #screenshot { max-width: 100%; border: 1px solid #ccc; margin-top: 20px; }
+        #output { white-space: pre-wrap; background: #f5f5f5; padding: 10px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Simple Headless Browser</h1>
+        
+        <div>
+            <button id="startBtn">Start Browser</button>
+        </div>
+        
+        <div>
+            <input id="urlInput" type="text" placeholder="https://example.com" value="https://example.com">
+            <button id="navigateBtn">Navigate</button>
+        </div>
+        
+        <div>
+            <button id="screenshotBtn">Take Screenshot</button>
+            <button id="contentBtn">Get Content</button>
+        </div>
+        
+        <div>
+            <input id="jsInput" type="text" placeholder="JavaScript code" value="document.title">
+            <button id="executeBtn">Execute</button>
+        </div>
+        
+        <img id="screenshot" style="display: none;">
+        <pre id="output"></pre>
+    </div>
+    
+    <script>
+        // Helper function for API calls
+        async function callApi(endpoint, data = {}) {
+            try {
+                const response = await fetch(`/api/${endpoint}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                return await response.json();
+            } catch (error) {
+                console.error('API Error:', error);
+                return { success: false, error: error.message };
+            }
+        }
+        
+        // Display output
+        function showOutput(data) {
+            document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+        }
+        
+        // Event listeners
+        document.getElementById('startBtn').addEventListener('click', async () => {
+            const result = await callApi('start');
+            showOutput(result);
+        });
+        
+        document.getElementById('navigateBtn').addEventListener('click', async () => {
+            const url = document.getElementById('urlInput').value;
+            const result = await callApi('navigate', { url });
+            showOutput(result);
+        });
+        
+        document.getElementById('screenshotBtn').addEventListener('click', async () => {
+            const result = await callApi('screenshot');
+            if (result.success) {
+                const img = document.getElementById('screenshot');
+                img.src = `data:image/png;base64,${result.screenshot}`;
+                img.style.display = 'block';
+            }
+            showOutput(result);
+        });
+        
+        document.getElementById('contentBtn').addEventListener('click', async () => {
+            const result = await callApi('content');
+            showOutput(result);
+        });
+        
+        document.getElementById('executeBtn').addEventListener('click', async () => {
+            const script = document.getElementById('jsInput').value;
+            const result = await callApi('execute', { script });
+            showOutput(result);
+        });
+    </script>
+</body>
+</html>
