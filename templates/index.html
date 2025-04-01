@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Headless Browser Control Panel</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #2c3e50;
+        }
+        .control-panel {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .sidebar {
+            flex: 1;
+            min-width: 300px;
+        }
+        .main-content {
+            flex: 3;
+            min-width: 500px;
+        }
+        .card {
+            background-color: #fff;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        .card h2 {
+            margin-top: 0;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+            color: #3498db;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"], 
+        input[type="number"], 
+        select, 
+        textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        textarea {
+            min-height: 100px;
+            font-family: monospace;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .status {
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .status.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+        .browser-view {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+            background-color: #fff;
+            min-height: 400px;
+            position: relative;
+        }
+        .browser-view img {
+            max-width: 100%;
+            display: block;
+        }
+        .browser-view .placeholder {
+            padding: 20px;
+            text-align: center;
+            color: #7f8c8d;
+        }
+        .browser-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .browser-url {
+            flex-grow: 1;
+        }
+        .loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 15px;
+        }
+        .tab {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+        }
+        .tab.active {
+            border-bottom: 2px solid #3498db;
+            font-weight: bold;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .session-info {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+        .hidden {
+            display: none;
+        }
+        #console-output {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        .console-line {
+            margin: 0;
+            padding: 2px 0;
+        }
+        .console-error {
+            color: #e74c3c;
+        }
+        .console-warning {
+            color: #f39c12;
+        }
+        .console-info {
+            color: #3498db;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Headless Browser Control Panel</h1>
+        
+        <div id="status-message" class="status info">
+            Welcome to the Headless Browser Control Panel. Start by creating a new session.
+        </div>
+        
+        <div class="control-panel">
+            <div class="sidebar">
+                <div class="card">
+                    <h2>Browser Control</h2>
+                    <div class="form-group">
+                        <button id="start-browser" onclick="startBrowser()">Start Browser</button>
+                        <button id="stop-browser" onclick="stopBrowser()" disabled>Stop Browser</button>
+                    </div>
+                    
+                    <h3>Session Management</h3>
+                    <div class="form-group">
+                        <label for="viewport-width">Viewport Width:</label>
+                        <input type="number" id="viewport-width" value="1280">
+                    </div>
+                    <div class="form-group">
+                        <label for="viewport-height">Viewport Height:</label>
+                        <input type="number" id="viewport-height" value="800">
+                    </div>
+                    <div class="form-group">
+                        <label for="user-agent">User Agent (optional):</label>
+                        <input type="text" id="user-agent" placeholder="Custom user agent">
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="optimize-browser" checked>
+                            Apply optimizations for complex sites
+                        </label>
+                    </div>
+                    <div class="button-group">
+                        <button id="create-session" onclick="createSession()" disabled>Create Session</button>
+                        <button id="close-session" onclick="closeSession()" disabled>Close Session</button>
+                    </div>
+                    <div id="session-info" class="session-info hidden">
+                        Session ID: <span id="session-id"></span><br>
+                        Created: <span id="session-created"></span>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h2>Actions</h2>
+                    <div class="tabs">
+                        <div class="tab active" onclick="switchTab('navigation')">Navigation</div>
+                        <div class="tab" onclick="switchTab('interaction')">Interaction</div>
+                        <div class="tab" onclick="switchTab('javascript')">JavaScript</div>
+                    </div>
+                    
+                    <div id="navigation-tab" class="tab-content active">
+                        <div class="form-group">
+                            <label for="navigation-url">URL:</label>
+                            <input type="text" id="navigation-url" placeholder="https://example.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="wait-until">Wait Until:</label>
+                            <select id="wait-until">
+                                <option value="load">load</option>
+                                <option value="domcontentloaded">domcontentloaded</option>
+                                <option value="networkidle">networkidle</option>
+                            </select>
+                        </div>
+                        <button id="navigate-button" onclick="navigate()" disabled>Navigate</button>
+                    </div>
+                    
+                    <div id="interaction-tab" class="tab-content">
+                        <div class="form-group">
+                            <label for="selector">CSS Selector:</label>
+                            <input type="text" id="selector" placeholder="button#submit">
+                        </div>
+                        <div class="button-group">
+                            <button id="click-button" onclick="clickElement()" disabled>Click</button>
+                            <button id="get-text-button" onclick="getElementText()" disabled>Get Text</button>
+                        </div>
+                        <div class="form-group">
+                            <label for="input-text">Text to Type:</label>
+                            <input type="text" id="input-text" placeholder="Text to type">
+                        </div>
+                        <button id="type-button" onclick="typeText()" disabled>Type Text</button>
+                    </div>
+                    
+                    <div id="javascript-tab" class="tab-content">
+                        <div class="form-group">
+                            <label for="javascript">JavaScript Code:</label>
+                            <textarea id="javascript" placeholder="document.title"></textarea>
+                        </div>
+                        <button id="execute-button" onclick="executeJavaScript()" disabled>Execute</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="main-content">
+                <div class="browser-controls">
+                    <input type="text" id="url-display" class="browser-url" readonly>
+                    <button id="screenshot-button" onclick="takeScreenshot()" disabled>Take Screenshot</button>
+                    <button id="get-content-button" onclick="getContent()" disabled>Get Content</button>
+                </div>
+                
+                <div class="browser-view">
+                    <div id="browser-placeholder" class="placeholder">
+                        No content to display. Start a session and navigate to a URL.
+                    </div>
+                    <img id="screenshot-display" class="hidden">
+                    <div id="loading-indicator" class="loading hidden">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h2>Console Output</h2>
+                    <div id="console-output"></div>
+                </div>
+                
+                <div class="card">
+                    <h2>Page Content</h2>
+                    <div class="tabs">
+                        <div class="tab active" onclick="switchContentTab('text')">Text</div>
+                        <div class="tab" onclick="switchContentTab('html')">HTML</div>
+                    </div>
+                    <div id="text-content-tab" class="tab-content active">
+                        <textarea id="text-content" readonly></textarea>
+                    </div>
+                    <div id="html-content-tab" class="tab-content">
+                        <textarea id="html-content" readonly></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let browserStarted = false;
+        let sessionId = null;
+        let currentUrl = '';
+        
+        // Helper functions
+        function showStatus(message, type = 'info') {
+            const statusElement = document.getElementById('status-message');
+            statusElement.textContent = message;
+            statusElement.className = `status ${type}`;
+        }
+        
+        function logToConsole(message, type = 'normal') {
+            const consoleOutput = document.getElementById('console-output');
+            const line = document.createElement('p');
+            line.className = `console-line console-${type}`;
+            line.textContent = message;
+            consoleOutput.appendChild(line);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+        
+        function showLoading(show = true) {
+            document.getElementById('loading-indicator').className = show ? 'loading' : 'loading hidden';
+        }
+        
+        function updateButtonStates() {
+            const browserStarted = window.browserStarted;
+            const hasSession = window.sessionId !== null;
+            
+            document.getElementById('start-browser').disabled = browserStarted;
+            document.getElementById('stop-browser').disabled = !browserStarted;
+            document.getElementById('create-session').disabled = !browserStarted;
+            document.getElementById('close-session').disabled = !hasSession;
+            
+            document.getElementById('navigate-button').disabled = !hasSession;
+            document.getElementById('screenshot-button').disabled = !hasSession;
+            document.getElementById('get-content-button').disabled = !hasSession;
+            document.getElementById('click-button').disabled = !hasSession;
+            document.getElementById('get-text-button').disabled = !hasSession;
+            document.getElementById('type-button').disabled = !hasSession;
+            document.getElementById('execute-button').disabled = !hasSession;
+            
+            if (hasSession) {
+                document.getElementById('session-info').className = 'session-info';
+                document.getElementById('session-id').textContent = sessionId;
+                document.getElementById('session-created').textContent = new Date().toLocaleTimeString();
+            } else {
+                document.getElementById('session-info').className = 'session-info hidden';
+            }
+        }
+        
+        function switchTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.className = 'tab-content';
+            });
+            
+            // Show selected tab content
+            document.getElementById(`${tabName}-tab`).className = 'tab-content active';
+            
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.className = 'tab';
+            });
+            
+            // Find the clicked tab button and make it active
+            const tabs = document.querySelectorAll('.tab');
+            for (let i = 0; i < tabs.length; i++) {
+                if (tabs[i].textContent.toLowerCase().includes(tabName)) {
+                    tabs[i].className = 'tab active';
+                    break;
+                }
+            }
+        }
+        
+        function switchContentTab(tabName) {
+            // Hide all content tab contents
+            document.getElementById('text-content-tab').className = 'tab-content';
+            document.getElementById('html-content-tab').className = 'tab-content';
+            
+            // Show selected content tab
+            document.getElementById(`${tabName}-content-tab`).className = 'tab-content active';
+            
+            // Update content tab buttons
+            const tabs = document.querySelectorAll('.card:last-child .tab');
+            tabs.forEach(tab => {
+                tab.className = 'tab';
+                if (tab.textContent.toLowerCase().includes(tabName)) {
+                    tab.className = 'tab active';
+                }
+            });
+        }
+        
+        function displayScreenshot(base64Image) {
+            const img = document.getElementById('screenshot-display');
+            img.src = `data:image/jpeg;base64,${base64Image}`;
+            img.className = '';
+            document.getElementById('browser-placeholder').className = 'placeholder hidden';
+        }
+        
+        function clearScreenshot() {
+            document.getElementById('screenshot-display').className = 'hidden';
+            document.getElementById('browser-placeholder').className = 'placeholder';
+        }
+        
+        // API functions
+        async function startBrowser() {
+            showLoading();
+            try {
+                const response = await fetch('/api/browser/start', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    window.browserStarted = true;
+                    showStatus('Browser started successfully', 'success');
+                    logToConsole('Browser started successfully', 'info');
+                } else {
+                    showStatus(`Failed to start browser: ${data.error}`, 'error');
+                    logToConsole(`Failed to start browser: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+                logToConsole(`Error: ${error.message}`, 'error');
+            } finally {
+                showLoading(false);
+                updateButtonStates();
+            }
+        }
+        
+        async function stopBrowser() {
+            showLoading();
+            try {
+                const response = await fetch('/api/browser/stop', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    window.browserStarted = false;
+                    window.sessionId = null;
+                    showStatus('Browser stopped successfully', 'success');
+                    logToConsole('Browser stopped successfully', 'info');
+                    clearScreenshot();
+                } else {
+                    showStatus(`Failed to stop browser: ${data.error}`, 'error');
+                    logToConsole(`Failed to stop browser: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+                logToConsole(`Error: ${error.message}`, 'error');
+            } finally {
+                showLoading(false);
+                updateButtonStates();
+            }
+        }
+        
+        async function createSession() {
+            showLoading();
+            try {
+                const viewportWidth = parseInt(document.getElementById('viewport-width').value) || 1280;
+                const viewportHeight = parseInt(document.getElementById('viewport-height').value) || 800;
+                const userAgent = document.getElementById('user-agent').value;
+                const optimize = document.getElementById('optimize-browser').checked;
+                
+                const response = await fetch('/api/session/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        viewport: {
+                            width: viewportWidth,
+                            height: viewportHeight
+                        },
+                        userAgent: userAgent || undefined,
+                        optimize: optimize,
+                        blockResources: optimize ? ['font'] : []
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    window.sessionId = data.sessionId;
+                    showStatus('Session created successfully', 'success');
+                    logToConsole(`Session created with ID: ${data.sessionId}`, 'info');
+                } else {
+                    showStatus(`Failed to create session: ${data.error}`, 'error');
+                    logToConsole(`Failed to create session: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+                logToConsole(`Error: ${error.message}`, 'error');
+            } finally {
+                showLoading(false);
+                updateButtonStates();
+            }
+        }
+        
+        async function closeSession() {
+            if (!window.sessionId) {
+                showStatus('No active session to close', 'error');
+                return;
+            }
+            
+            showLoading();
+            try {
+                const response = await fetch('/api/session/close', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        sessionId: window.sessionId
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    window.sessionId = null;
+                    window.currentUrl = '';
+                    document.getElementById('url-display').value = '';
+                    showStatus('Session closed successfully', 'success');
+                    logToConsole('Session closed successfully', 'info');
+                    clearScreenshot();
+                    document.getElementById('text-content').value = '';
+                    document.getElementById('html-content').value = '';
+                } else {
+                    showStatus(`Failed to close session: ${data.error}`, 'error');
+                    logToConsole(`Failed to close session: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+                logToConsole(`Error: ${error.message}`, 'error');
+            } finally {
+                showLoading(false);
+                updateButtonStates();
+            }
+        }
+        
+        async function navigate() {
+            if (!window.sessionId) {
+                showStatus('No active session', 'error');
+                return;
+            }
+            
+            const url = document.getElementById('navigation-url').value;
+            if (!url) {
+                showStatus('URL is required', 'error');
+                return;
+            }
+            
+            showLoading();
+            try {
+                const waitUntil = document.getElementById('wait-until').value;
+                
+                const response = await fetch('/api/navigate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        sessionId: window.sessionId,
+                        url: url,
+                        waitUntil: waitUntil
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    window.currentUrl = data.url;
+                    document.getElementById('url-display').value = data.url;
+                    showStatus(`Navigated to ${data.url}`, 'success');
+                    logToConsole(`Navigated to ${data.url} (Status: ${data.status})`, 'info');
+                    
+                    // Take a screenshot after navigation
+                    await takeScreenshot();
+                } else {
+                    showStatus(`Navigation failed: ${data.error}`, 'error');
+                    logToConsole(`Navigation failed: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+                logToConsole(`Error: ${error.message}`, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        async function takeScreenshot() {
+            if (!window.sessionId) {
+                showStatus('No active session', 'error');
+                return;
+            }
+            
+            showLoading();
+            try {
+                const response = await fetch('/api/screenshot', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        sessionId: window.sessionId,
+                        fullPage: true
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayScreenshot(data.screenshot);
+                    showStatus('Screenshot taken successfully', 'success');
+                    logToConsole('Screenshot taken successfully', 'info');
+                } else {
+                    showStatus(`Failed to take screenshot: ${data.error}`, 'error');
+                    logToConsole(`Failed to take screenshot: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+                logToConsole(`Error: ${error.message}`, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        async function getContent() {
+            if (!window.sessionId) {
+                showStatus('No active session', 'error');
+                return;
+            }
+            
+            showLoading();
+            try {
+                const response = await fetch('/api/content', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        sessionId: window.sessionId,
+                        includeHtml: true
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('text-content').value = data.text_content || '';
+                    document.getElementById('html-content').value = data.html_content || '';
+                    showStatus('Content retrieved successfully', 'success');
+                    logToConsole(`Content retrieved from ${data.url}`, 'info');
+                } else {
+                    showStatus(`Failed to get content: ${data.error}`, 'error');
+                    logToConsole(`Failed to get content: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+                logToConsole(`Error: ${error.message}`, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        async function clickElement() {
+            if (!window.sessionId) {
+                showStatus('No active session', 'error');
+                return;
+            }
+            
+            const selector = document.getElementById('selector').value;
+            if (!selector) {
+                showStatus('Selector is required', 'error');
+                return;
+            }
+            
+            showLoading();
+            try {
+                const response = await fetch('/api/click', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        sessionId: window.sessionId,
+                        selector: selector
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showStatus(`Clicked on element: ${selector}`, 'success');
+                    logToConsole(`Clicked on element: ${selector}`, 'info');
+                    
+                    // Take a screenshot after clicking
+                    await takeScreenshot();
+                } else {
+                    showStatus(`Failed to click element: ${data.error}`, 'error');
+                    logToConsole(`Failed to click element: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+                logToConsole(`Error: ${error.message}`, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        async function getElementText() {
+            if (!window.sessionId) {
+                showStatus('No active session', 'error');
+                return;
+            }
+            
+            const selector = document.getElementById('selector').value;
+            if (!selector) {
+                showStatus('Selector is required', 'error');
+                return;
+            }
+            
+            showLoading();
+            try {
+                const response = await fetch('/api/element', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        sessionId: window.sessionId,
+                        selector: selector
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showStatus(`Element text: ${data.text}`, 'success');
+                    logToConsole(`Element text (${selector}): ${data.text}`, 'info');
+                } else {
+                    showStatus(`Failed to get element text: ${data.error}`, 'error');
+                    logToConsole(`Failed to get element text: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+                logToConsole(`Error: ${error.message}`, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        async function typeText() {
+            if (!window.sessionId) {
+                showStatus('No active session', 'error');
+                return;
+            }
+            
+            const selector = document.getElementById('selector').value;
+            if (!selector) {
+                showStatus('Selector is required', 'error');
+                return;
+            }
+            
+            const text = document.getElementById('input-text').value;
+            if (!text) {
+                showStatus('Text is required', 'error');
+                return;
+            }
+            
+            showLoading();
+            try {
+                const response = await fetch('/api/type', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        sessionId: window.sessionId,
+                        selector: selector,
+                        text: text
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showStatus(`Typed text into element: ${selector}`, 'success');
+                    logToConsole(`Typed text into element: ${selector}`, 'info');
+                    
+                    // Take a screenshot after typing
+                    await takeScreenshot();
+                } else {
+                    showStatus(`Failed to type text: ${data.error}`, 'error');
+                    logToConsole(`Failed to type text: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+                logToConsole(`Error: ${error.message}`, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        async function executeJavaScript() {
+            if (!window.sessionId) {
+                showStatus('No active session', 'error');
+                return;
+            }
+            
+            const script = document.getElementById('javascript').value;
+            if (!script) {
+                showStatus('JavaScript code is required', 'error');
+                return;
+            }
+            
+            showLoading();
+            try {
+                const response = await fetch('/api/execute', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        sessionId: window.sessionId,
+                        script: script
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showStatus('JavaScript executed successfully', 'success');
+                    logToConsole(`JavaScript result: ${JSON.stringify(data.result)}`, 'info');
+                    
+                    // Take a screenshot after executing JavaScript
+                    await takeScreenshot();
+                } else {
+                    showStatus(`Failed to execute JavaScript: ${data.error}`, 'error');
+                    logToConsole(`Failed to execute JavaScript: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+                logToConsole(`Error: ${error.message}`, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        // Initialize
+        updateButtonStates();
+    </script>
+</body>
+</html>
